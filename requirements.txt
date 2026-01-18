@@ -1,6 +1,9 @@
 ## Legacy dependency pins.
 ## Preferred workflow: `uv sync` (uses pyproject.toml + uv.lock).
 
+# Hugging Face Space UI
+gradio>=4.0.0
+
 certifi==2026.1.4
 charset-normalizer==3.4.4
 contourpy==1.3.3

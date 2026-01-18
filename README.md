@@ -1,3 +1,12 @@
+---
+title: MapToPoster
+sdk: gradio
+sdk_version: "6.3.0"
+python_version: "3.11"
+app_file: app.py
+license: mit
+---
+
 # City Map Poster Generator
 
 Generate beautiful, minimalist map posters for any city in the world.
@@ -34,6 +43,22 @@ If you prefer pip:
 ```bash
 pip install -r requirements.txt
 ```
+
+## Hugging Face Space (Gradio)
+
+This repo includes a Gradio Space entrypoint in `app.py`.
+
+Local run:
+
+```bash
+pip install -r requirements.txt
+python app.py
+```
+
+Notes for Spaces:
+- The UI caps radius to 2–20km and queues requests (1 at a time) to reduce load on public Nominatim/Overpass services.
+- If geocoding starts failing due to rate limits, set `MAPTOP_POSTER_USER_AGENT` to a unique value (ideally with a contact).
+- OSMnx caching is enabled under `/tmp/osmnx_cache` (override with `OSMNX_CACHE_DIR`).
 
 ## Usage
 
