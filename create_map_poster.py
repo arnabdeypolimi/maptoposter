@@ -97,6 +97,76 @@ def load_theme(theme_name="feature_based"):
 # Load theme (can be changed via command line or input)
 THEME = None  # Will be loaded later
 
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(
+        description="Generate beautiful map posters for any city",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python create_map_poster.py --city \"New York\" --country \"USA\"
+  python create_map_poster.py --city Tokyo --country Japan --theme midnight_blue
+  python create_map_poster.py --city Paris --country France --theme noir --distance 15000
+  python create_map_poster.py --list-themes
+        """,
+    )
+
+    parser.add_argument('--city', '-c', type=str, help='City name')
+    parser.add_argument('--country', '-C', type=str, help='Country name')
+    parser.add_argument('--theme', '-t', type=str, default='feature_based', help='Theme name (default: feature_based)')
+    parser.add_argument('--distance', '-d', type=int, default=29000, help='Map radius in meters (default: 29000)')
+    parser.add_argument('--list-themes', action='store_true', help='List all available themes')
+
+    args = parser.parse_args(argv)
+
+    # If no arguments provided, show examples
+    if argv is None and len(os.sys.argv) == 1:
+        print_examples()
+        return 0
+
+    # List themes if requested
+    if args.list_themes:
+        list_themes()
+        return 0
+
+    # Validate required arguments
+    if not args.city or not args.country:
+        print("Error: --city and --country are required.\n")
+        print_examples()
+        return 1
+
+    # Validate theme exists
+    available_themes = get_available_themes()
+    if args.theme not in available_themes:
+        print(f"Error: Theme '{args.theme}' not found.")
+        print(f"Available themes: {', '.join(available_themes)}")
+        return 1
+
+    print("=" * 50)
+    print("City Map Poster Generator")
+    print("=" * 50)
+
+    # Load theme
+    global THEME
+    THEME = load_theme(args.theme)
+
+    # Get coordinates and generate poster
+    try:
+        coords = get_coordinates(args.city, args.country)
+        output_file = generate_output_filename(args.city, args.theme)
+        create_poster(args.city, args.country, coords, args.distance, output_file)
+
+        print("\n" + "=" * 50)
+        print("✓ Poster generation complete!")
+        print("=" * 50)
+        return 0
+
+    except Exception as e:
+        print(f"\n✗ Error: {e}")
+        import traceback
+        traceback.print_exc()
+        return 1
+
 def create_gradient_fade(ax, color, location='bottom', zorder=10):
     """
     Creates a fade effect at the top or bottom of the map.
@@ -404,68 +474,4 @@ def list_themes():
         print()
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Generate beautiful map posters for any city",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-Examples:
-  python create_map_poster.py --city "New York" --country "USA"
-  python create_map_poster.py --city Tokyo --country Japan --theme midnight_blue
-  python create_map_poster.py --city Paris --country France --theme noir --distance 15000
-  python create_map_poster.py --list-themes
-        """
-    )
-    
-    parser.add_argument('--city', '-c', type=str, help='City name')
-    parser.add_argument('--country', '-C', type=str, help='Country name')
-    parser.add_argument('--theme', '-t', type=str, default='feature_based', help='Theme name (default: feature_based)')
-    parser.add_argument('--distance', '-d', type=int, default=29000, help='Map radius in meters (default: 29000)')
-    parser.add_argument('--list-themes', action='store_true', help='List all available themes')
-    
-    args = parser.parse_args()
-    
-    # If no arguments provided, show examples
-    if len(os.sys.argv) == 1:
-        print_examples()
-        os.sys.exit(0)
-    
-    # List themes if requested
-    if args.list_themes:
-        list_themes()
-        os.sys.exit(0)
-    
-    # Validate required arguments
-    if not args.city or not args.country:
-        print("Error: --city and --country are required.\n")
-        print_examples()
-        os.sys.exit(1)
-    
-    # Validate theme exists
-    available_themes = get_available_themes()
-    if args.theme not in available_themes:
-        print(f"Error: Theme '{args.theme}' not found.")
-        print(f"Available themes: {', '.join(available_themes)}")
-        os.sys.exit(1)
-    
-    print("=" * 50)
-    print("City Map Poster Generator")
-    print("=" * 50)
-    
-    # Load theme
-    THEME = load_theme(args.theme)
-    
-    # Get coordinates and generate poster
-    try:
-        coords = get_coordinates(args.city, args.country)
-        output_file = generate_output_filename(args.city, args.theme)
-        create_poster(args.city, args.country, coords, args.distance, output_file)
-        
-        print("\n" + "=" * 50)
-        print("✓ Poster generation complete!")
-        print("=" * 50)
-        
-    except Exception as e:
-        print(f"\n✗ Error: {e}")
-        import traceback
-        traceback.print_exc()
-        os.sys.exit(1)
+    raise SystemExit(main())

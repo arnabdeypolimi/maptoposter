@@ -1,3 +1,18 @@
 cache/*
 env/
 .env/
+
+# Generated outputs
+posters/
+
+# uv / virtualenv
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.egg-info/
+
+# macOS
+.DS_Store

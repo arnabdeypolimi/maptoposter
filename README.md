@@ -23,13 +23,26 @@ Generate beautiful, minimalist map posters for any city in the world.
 ## Installation
 
 ```bash
+# Recommended: uv
+# Install uv: https://docs.astral.sh/uv/
+# Requires Python 3.11+
+uv sync
+```
+
+If you prefer pip:
+
+```bash
 pip install -r requirements.txt
 ```
 
 ## Usage
 
 ```bash
-python create_map_poster.py --city <city> --country <country> [options]
+# With uv (recommended)
+uv run python create_map_poster.py --city <city> --country <country> [options]
+
+# Or via the installed script entrypoint
+uv run maptoposter --city <city> --country <country> [options]
 ```
 
 ### Options
@@ -46,34 +59,34 @@ python create_map_poster.py --city <city> --country <country> [options]
 
 ```bash
 # Iconic grid patterns
-python create_map_poster.py -c "New York" -C "USA" -t noir -d 12000           # Manhattan grid
-python create_map_poster.py -c "Barcelona" -C "Spain" -t warm_beige -d 8000   # Eixample district
+uv run python create_map_poster.py -c "New York" -C "USA" -t noir -d 12000           # Manhattan grid
+uv run python create_map_poster.py -c "Barcelona" -C "Spain" -t warm_beige -d 8000   # Eixample district
 
 # Waterfront & canals
-python create_map_poster.py -c "Venice" -C "Italy" -t blueprint -d 4000       # Canal network
-python create_map_poster.py -c "Amsterdam" -C "Netherlands" -t ocean -d 6000  # Concentric canals
-python create_map_poster.py -c "Dubai" -C "UAE" -t midnight_blue -d 15000     # Palm & coastline
+uv run python create_map_poster.py -c "Venice" -C "Italy" -t blueprint -d 4000       # Canal network
+uv run python create_map_poster.py -c "Amsterdam" -C "Netherlands" -t ocean -d 6000  # Concentric canals
+uv run python create_map_poster.py -c "Dubai" -C "UAE" -t midnight_blue -d 15000     # Palm & coastline
 
 # Radial patterns
-python create_map_poster.py -c "Paris" -C "France" -t pastel_dream -d 10000   # Haussmann boulevards
-python create_map_poster.py -c "Moscow" -C "Russia" -t noir -d 12000          # Ring roads
+uv run python create_map_poster.py -c "Paris" -C "France" -t pastel_dream -d 10000   # Haussmann boulevards
+uv run python create_map_poster.py -c "Moscow" -C "Russia" -t noir -d 12000          # Ring roads
 
 # Organic old cities
-python create_map_poster.py -c "Tokyo" -C "Japan" -t japanese_ink -d 15000    # Dense organic streets
-python create_map_poster.py -c "Marrakech" -C "Morocco" -t terracotta -d 5000 # Medina maze
-python create_map_poster.py -c "Rome" -C "Italy" -t warm_beige -d 8000        # Ancient layout
+uv run python create_map_poster.py -c "Tokyo" -C "Japan" -t japanese_ink -d 15000    # Dense organic streets
+uv run python create_map_poster.py -c "Marrakech" -C "Morocco" -t terracotta -d 5000 # Medina maze
+uv run python create_map_poster.py -c "Rome" -C "Italy" -t warm_beige -d 8000        # Ancient layout
 
 # Coastal cities
-python create_map_poster.py -c "San Francisco" -C "USA" -t sunset -d 10000    # Peninsula grid
-python create_map_poster.py -c "Sydney" -C "Australia" -t ocean -d 12000      # Harbor city
-python create_map_poster.py -c "Mumbai" -C "India" -t contrast_zones -d 18000 # Coastal peninsula
+uv run python create_map_poster.py -c "San Francisco" -C "USA" -t sunset -d 10000    # Peninsula grid
+uv run python create_map_poster.py -c "Sydney" -C "Australia" -t ocean -d 12000      # Harbor city
+uv run python create_map_poster.py -c "Mumbai" -C "India" -t contrast_zones -d 18000 # Coastal peninsula
 
 # River cities
-python create_map_poster.py -c "London" -C "UK" -t noir -d 15000              # Thames curves
-python create_map_poster.py -c "Budapest" -C "Hungary" -t copper_patina -d 8000  # Danube split
+uv run python create_map_poster.py -c "London" -C "UK" -t noir -d 15000              # Thames curves
+uv run python create_map_poster.py -c "Budapest" -C "Hungary" -t copper_patina -d 8000  # Danube split
 
 # List available themes
-python create_map_poster.py --list-themes
+uv run python create_map_poster.py --list-themes
 ```
 
 ### Distance Guide
@@ -142,6 +155,8 @@ Create a JSON file in `themes/` directory:
 ```
 map_poster/
 ├── create_map_poster.py          # Main script
+├── pyproject.toml                # Project metadata (uv)
+├── uv.lock                       # Locked dependencies (uv)
 ├── themes/               # Theme JSON files
 ├── fonts/                # Roboto font files
 ├── posters/              # Generated posters
