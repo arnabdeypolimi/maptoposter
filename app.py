@@ -6,11 +6,13 @@ os.environ.setdefault("MPLBACKEND", "Agg")
 import re
 import tempfile
 import time
+from enum import Enum
 from functools import lru_cache
 from pathlib import Path
 
 import gradio as gr
 from geopy.geocoders import Nominatim
+from pydantic import BaseModel, ValidationError, field_validator
 
 import osmnx as ox
 
@@ -21,9 +23,88 @@ APP_TITLE = "MapToPoster"
 DEFAULT_DISTANCE_M = 10000
 MIN_DISTANCE_M = 2000
 MAX_DISTANCE_M = 20000
+DEFAULT_DPI = 300
+MIN_DPI = 150
+MAX_DPI = 600
+
+
+class NetworkType(str, Enum):
+    ALL = "all"
+    ALL_PUBLIC = "all_public"
+    DRIVE = "drive"
+    DRIVE_SERVICE = "drive_service"
+    WALK = "walk"
+    BIKE = "bike"
+
+
+class DistanceType(str, Enum):
+    BBOX = "bbox"
+    NETWORK = "network"
+
+
+NETWORK_TYPES = [item.value for item in NetworkType]
+DIST_TYPES = [item.value for item in DistanceType]
 
 
 _REPO_ROOT = Path(__file__).resolve().parent
+
+
+class GenerateRequest(BaseModel):
+    city: str
+    country: str
+    theme: str
+    distance_m: int
+    dpi: int
+    network_type: NetworkType
+    dist_type: DistanceType
+
+    @field_validator("city", "country", "theme")
+    @classmethod
+    def _strip_and_require(cls, value: str) -> str:
+        value = (value or "").strip()
+        if not value:
+            raise ValueError("must be provided")
+        return value
+
+    @field_validator("distance_m")
+    @classmethod
+    def _validate_distance(cls, value: int) -> int:
+        value = int(value)
+        if value < MIN_DISTANCE_M or value > MAX_DISTANCE_M:
+            raise ValueError(
+                f"Distance must be between {MIN_DISTANCE_M} and {MAX_DISTANCE_M} meters."
+            )
+        return value
+
+    @field_validator("dpi")
+    @classmethod
+    def _validate_dpi(cls, value: int) -> int:
+        value = int(value)
+        if value < MIN_DPI or value > MAX_DPI:
+            raise ValueError(f"DPI must be between {MIN_DPI} and {MAX_DPI}.")
+        return value
+
+    @field_validator("network_type", mode="before")
+    @classmethod
+    def _validate_network_type(cls, value: str | NetworkType) -> NetworkType:
+        if isinstance(value, NetworkType):
+            return value
+        value = (value or "").strip()
+        try:
+            return NetworkType(value)
+        except ValueError as exc:
+            raise ValueError("Invalid network type.") from exc
+
+    @field_validator("dist_type", mode="before")
+    @classmethod
+    def _validate_dist_type(cls, value: str | DistanceType) -> DistanceType:
+        if isinstance(value, DistanceType):
+            return value
+        value = (value or "").strip()
+        try:
+            return DistanceType(value)
+        except ValueError as exc:
+            raise ValueError("Invalid distance type.") from exc
 
 
 def _load_readme_example_posters() -> list[tuple[str, str]]:
@@ -107,48 +188,70 @@ def _rate_limit_geocode(min_interval_s: float = 1.05) -> None:
     _last_geocode_ts = time.time()
 
 
+@lru_cache(maxsize=1)
 def _geocoder() -> Nominatim:
     user_agent = os.environ.get("MAPTOP_POSTER_USER_AGENT", "maptoposter-hf-space")
     return Nominatim(user_agent=user_agent)
 
 
 @lru_cache(maxsize=256)
-def _geocode(city: str, country: str) -> tuple[float, float]:
+def _geocode(city: str, country: str) -> maptoposter.Coordinates:
     _rate_limit_geocode()
     location = _geocoder().geocode(f"{city}, {country}")
     if not location:
         raise ValueError(f"Could not find coordinates for {city}, {country}")
-    return (float(location.latitude), float(location.longitude))
+    return maptoposter.Coordinates(
+        lat=float(location.latitude),
+        lon=float(location.longitude),
+    )
 
 
-def generate(city: str, country: str, theme: str, distance_m: int) -> str:
-    city = (city or "").strip()
-    country = (country or "").strip()
-
-    if not city or not country:
-        raise gr.Error("City and Country are required.")
-
-    distance_m = int(distance_m)
-    if distance_m < MIN_DISTANCE_M or distance_m > MAX_DISTANCE_M:
-        raise gr.Error(
-            f"Distance must be between {MIN_DISTANCE_M} and {MAX_DISTANCE_M} meters."
+def generate(
+    city: str,
+    country: str,
+    theme: str,
+    distance_m: int,
+    dpi: int,
+    network_type: str,
+    dist_type: str,
+) -> str:
+    try:
+        request = GenerateRequest(
+            city=city,
+            country=country,
+            theme=theme,
+            distance_m=distance_m,
+            dpi=dpi,
+            network_type=network_type,
+            dist_type=dist_type,
         )
+    except ValidationError as exc:
+        raise gr.Error(str(exc))
 
     available_themes = maptoposter.get_available_themes()
-    if theme not in available_themes:
-        raise gr.Error(f"Unknown theme: {theme}")
+    if request.theme not in available_themes:
+        raise gr.Error(f"Unknown theme: {request.theme}")
 
-    maptoposter.THEME = maptoposter.load_theme(theme)
+    maptoposter.THEME = maptoposter.load_theme(request.theme)
 
-    lat, lon = _geocode(city, country)
+    coords = _geocode(request.city, request.country)
 
     tmp_dir = tempfile.gettempdir()
     output_path = os.path.join(
         tmp_dir,
-        f"{_slugify(city)}_{_slugify(theme)}_{int(time.time())}.png",
+        f"{_slugify(request.city)}_{_slugify(request.theme)}_{int(time.time())}.png",
     )
 
-    maptoposter.create_poster(city, country, (lat, lon), distance_m, output_path)
+    maptoposter.create_poster(
+        request.city,
+        request.country,
+        coords,
+        request.distance_m,
+        output_path,
+        network_type=request.network_type.value,
+        dist_type=request.dist_type.value,
+        dpi=request.dpi,
+    )
     return output_path
 
 
@@ -304,6 +407,26 @@ def build_demo() -> gr.Blocks:
                         value=DEFAULT_DISTANCE_M,
                     )
 
+                    with gr.Accordion("Advanced settings", open=False):
+                        with gr.Row():
+                            dpi = gr.Slider(
+                                label="DPI",
+                                minimum=MIN_DPI,
+                                maximum=MAX_DPI,
+                                step=10,
+                                value=DEFAULT_DPI,
+                            )
+                            network_type = gr.Dropdown(
+                                label="Network type",
+                                choices=NETWORK_TYPES,
+                                value="all",
+                            )
+                        dist_type = gr.Dropdown(
+                            label="Distance type",
+                            choices=DIST_TYPES,
+                            value="bbox",
+                        )
+
                     btn = gr.Button("Generate poster", elem_classes=["mtp-primary"])
                     gr.HTML(
                         """<div class="mtp-subtle">Uses public geocoding + OSM services. Please keep distances modest.</div>"""
@@ -313,7 +436,11 @@ def build_demo() -> gr.Blocks:
                 with gr.Group(elem_classes=["mtp-card"]):
                     out = gr.Image(label="Poster", type="filepath", show_label=True)
 
-        btn.click(generate, inputs=[city, country, theme, distance], outputs=[out])
+        btn.click(
+            generate,
+            inputs=[city, country, theme, distance, dpi, network_type, dist_type],
+            outputs=[out],
+        )
 
         if example_posters:
             gr.Markdown("## Example gallery")

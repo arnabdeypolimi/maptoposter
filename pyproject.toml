@@ -32,6 +32,7 @@ dependencies = [
   "packaging==25.0",
   "pandas==2.3.3",
   "pillow==12.1.0",
+  "pydantic==2.11.1",
   "pyogrio==0.12.1",
   "pyparsing==3.3.1",
   "pyproj==3.7.2",
