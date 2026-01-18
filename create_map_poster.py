@@ -369,6 +369,8 @@ def create_poster(
     network_type: str = "all",
     dist_type: str = "bbox",
     dpi: int = 300,
+    dot: Coordinates | Sequence[float] | None = None,
+    dot_size: float = 60,
 ) -> None:
     print(f"\nGenerating map for {city}, {country}...")
     theme = _require_theme()
@@ -431,6 +433,34 @@ def create_poster(
         edge_linewidth=edge_widths,
         show=False, close=False
     )
+
+    # Optional highlight pin
+    if dot is not None:
+        pin_coords = _coerce_coordinates(dot)
+        ylim = ax.get_ylim()
+        y_range = ylim[1] - ylim[0]
+        offset = y_range * 0.0025
+
+        head_lat = pin_coords.lat + offset * 0.6
+        tip_lat = pin_coords.lat - offset * 0.6
+
+        ax.scatter(
+            [pin_coords.lon],
+            [head_lat],
+            s=float(dot_size),
+            c="#FF2D2D",
+            edgecolors="none",
+            zorder=8,
+        )
+        ax.scatter(
+            [pin_coords.lon],
+            [tip_lat],
+            s=float(dot_size) * 0.9,
+            c="#FF2D2D",
+            marker="v",
+            edgecolors="none",
+            zorder=7,
+        )
     
     # Layer 3: Gradients (Top and Bottom)
     create_gradient_fade(ax, theme.gradient_color, location="bottom", zorder=10)

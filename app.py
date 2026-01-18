@@ -26,6 +26,9 @@ MAX_DISTANCE_M = 20000
 DEFAULT_DPI = 300
 MIN_DPI = 150
 MAX_DPI = 600
+DEFAULT_DOT_SIZE = 60
+MIN_DOT_SIZE = 10
+MAX_DOT_SIZE = 300
 
 
 class NetworkType(str, Enum):
@@ -57,6 +60,8 @@ class GenerateRequest(BaseModel):
     dpi: int
     network_type: NetworkType
     dist_type: DistanceType
+    home_point: str | None = None
+    dot_size: float | None = None
 
     @field_validator("city", "country", "theme")
     @classmethod
@@ -105,6 +110,33 @@ class GenerateRequest(BaseModel):
             return DistanceType(value)
         except ValueError as exc:
             raise ValueError("Invalid distance type.") from exc
+
+    @field_validator("dot_size", mode="before")
+    @classmethod
+    def _validate_dot_size(cls, value: str | float | None) -> float | None:
+        if value is None or value == "":
+            return None
+        value = float(value)
+        if value < MIN_DOT_SIZE or value > MAX_DOT_SIZE:
+            raise ValueError(f"Dot size must be between {MIN_DOT_SIZE} and {MAX_DOT_SIZE}.")
+        return value
+
+def _parse_home_point(value: str | None) -> tuple[float, float] | None:
+    if not value:
+        return None
+    cleaned = value.strip()
+    if not cleaned:
+        return None
+    parts = [p.strip() for p in cleaned.split(",")]
+    if len(parts) != 2:
+        raise ValueError("Home point must be in 'lat, lon' format.")
+    lat = float(parts[0])
+    lon = float(parts[1])
+    if lat < -90 or lat > 90:
+        raise ValueError("Home point latitude must be between -90 and 90.")
+    if lon < -180 or lon > 180:
+        raise ValueError("Home point longitude must be between -180 and 180.")
+    return (lat, lon)
 
 
 def _load_readme_example_posters() -> list[tuple[str, str]]:
@@ -214,6 +246,8 @@ def generate(
     dpi: int,
     network_type: str,
     dist_type: str,
+    home_point: str | None,
+    dot_size: float | None,
 ) -> str:
     try:
         request = GenerateRequest(
@@ -224,8 +258,15 @@ def generate(
             dpi=dpi,
             network_type=network_type,
             dist_type=dist_type,
+            home_point=home_point,
+            dot_size=dot_size,
         )
     except ValidationError as exc:
+        raise gr.Error(str(exc))
+
+    try:
+        dot_coords = _parse_home_point(request.home_point)
+    except ValueError as exc:
         raise gr.Error(str(exc))
 
     available_themes = maptoposter.get_available_themes()
@@ -251,6 +292,8 @@ def generate(
         network_type=request.network_type.value,
         dist_type=request.dist_type.value,
         dpi=request.dpi,
+        dot=dot_coords,
+        dot_size=request.dot_size if request.dot_size is not None else DEFAULT_DOT_SIZE,
     )
     return output_path
 
@@ -426,6 +469,17 @@ def build_demo() -> gr.Blocks:
                             choices=DIST_TYPES,
                             value="bbox",
                         )
+                        home_point = gr.Textbox(
+                            label="Home point (lat, lon)",
+                            placeholder="31.3, 2.3",
+                        )
+                        dot_size = gr.Slider(
+                            label="Dot size",
+                            minimum=MIN_DOT_SIZE,
+                            maximum=MAX_DOT_SIZE,
+                            step=5,
+                            value=DEFAULT_DOT_SIZE,
+                        )
 
                     btn = gr.Button("Generate poster", elem_classes=["mtp-primary"])
                     gr.HTML(
@@ -438,7 +492,17 @@ def build_demo() -> gr.Blocks:
 
         btn.click(
             generate,
-            inputs=[city, country, theme, distance, dpi, network_type, dist_type],
+            inputs=[
+                city,
+                country,
+                theme,
+                distance,
+                dpi,
+                network_type,
+                dist_type,
+                home_point,
+                dot_size,
+            ],
             outputs=[out],
         )
 
