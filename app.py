@@ -45,8 +45,14 @@ class DistanceType(str, Enum):
     NETWORK = "network"
 
 
+class Orientation(str, Enum):
+    PORTRAIT = "portrait"
+    LANDSCAPE = "landscape"
+
+
 NETWORK_TYPES = [item.value for item in NetworkType]
 DIST_TYPES = [item.value for item in DistanceType]
+ORIENTATION_TYPES = [item.value for item in Orientation]
 
 
 _REPO_ROOT = Path(__file__).resolve().parent
@@ -60,6 +66,7 @@ class GenerateRequest(BaseModel):
     dpi: int
     network_type: NetworkType
     dist_type: DistanceType
+    orientation: Orientation
     home_point: str | None = None
     dot_size: float | None = None
 
@@ -110,6 +117,17 @@ class GenerateRequest(BaseModel):
             return DistanceType(value)
         except ValueError as exc:
             raise ValueError("Invalid distance type.") from exc
+
+    @field_validator("orientation", mode="before")
+    @classmethod
+    def _validate_orientation(cls, value: str | Orientation) -> Orientation:
+        if isinstance(value, Orientation):
+            return value
+        value = (value or "").strip()
+        try:
+            return Orientation(value)
+        except ValueError as exc:
+            raise ValueError("Invalid orientation.") from exc
 
     @field_validator("dot_size", mode="before")
     @classmethod
@@ -246,6 +264,7 @@ def generate(
     dpi: int,
     network_type: str,
     dist_type: str,
+    orientation: str,
     home_point: str | None,
     dot_size: float | None,
 ) -> str:
@@ -258,6 +277,7 @@ def generate(
             dpi=dpi,
             network_type=network_type,
             dist_type=dist_type,
+            orientation=orientation,
             home_point=home_point,
             dot_size=dot_size,
         )
@@ -294,6 +314,7 @@ def generate(
         dpi=request.dpi,
         dot=dot_coords,
         dot_size=request.dot_size if request.dot_size is not None else DEFAULT_DOT_SIZE,
+        orientation=request.orientation.value,
     )
     return output_path
 
@@ -469,6 +490,11 @@ def build_demo() -> gr.Blocks:
                             choices=DIST_TYPES,
                             value="bbox",
                         )
+                        orientation = gr.Dropdown(
+                            label="Orientation",
+                            choices=ORIENTATION_TYPES,
+                            value="portrait",
+                        )
                         home_point = gr.Textbox(
                             label="Home point (lat, lon)",
                             placeholder="31.3, 2.3",
@@ -500,6 +526,7 @@ def build_demo() -> gr.Blocks:
                 dpi,
                 network_type,
                 dist_type,
+                orientation,
                 home_point,
                 dot_size,
             ],

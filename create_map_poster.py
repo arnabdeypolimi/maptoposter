@@ -359,6 +359,15 @@ def _coerce_coordinates(point: Coordinates | Sequence[float]) -> Coordinates:
     raise TypeError("point must be Coordinates or (lat, lon) sequence")
 
 
+def _normalize_orientation(value: str | None) -> str:
+    if not value:
+        return "portrait"
+    cleaned = str(value).strip().lower()
+    if cleaned in {"portrait", "landscape"}:
+        return cleaned
+    raise ValueError("Orientation must be 'portrait' or 'landscape'.")
+
+
 def create_poster(
     city: str,
     country: str,
@@ -371,6 +380,7 @@ def create_poster(
     dpi: int = 300,
     dot: Coordinates | Sequence[float] | None = None,
     dot_size: float = 60,
+    orientation: str = "portrait",
 ) -> None:
     print(f"\nGenerating map for {city}, {country}...")
     theme = _require_theme()
@@ -410,7 +420,9 @@ def create_poster(
     
     # 2. Setup Plot
     print("Rendering map...")
-    fig, ax = plt.subplots(figsize=(12, 16), facecolor=theme.bg)
+    orientation = _normalize_orientation(orientation)
+    figsize = (12, 16) if orientation == "portrait" else (16, 12)
+    fig, ax = plt.subplots(figsize=figsize, facecolor=theme.bg)
     ax.set_facecolor(theme.bg)
     ax.set_position([0, 0, 1, 1])
     
